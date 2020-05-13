@@ -41,7 +41,7 @@ defmodule Kitakami.Bot do
       nil -> {true, update.edited_message}
       msg -> {false, msg}
     end
-    
+
     chat_id      = info.chat.id
     chat_title   = cond do
       Map.has_key?(info.chat, :title) -> case info.chat.title do
@@ -75,10 +75,10 @@ defmodule Kitakami.Bot do
     msg_opts     = [parse_mode: "Markdown"]
 
     original_message_text = cond do
-      is_edited -> 
+      is_edited ->
         original_update_id = query_data(:messages_index, message_id)
         original_message = query_data(:messages, original_update_id)
-        
+
         case original_message do
           nil -> nil
           original_message -> original_message.message
@@ -115,7 +115,7 @@ defmodule Kitakami.Bot do
         if chat_type != "private" do
           store_data(:chats, chat_id, default_chat_data)
         end
-        
+
         default_chat_data
       data -> data |> Map.delete(:updated_at)
     end
@@ -208,13 +208,13 @@ defmodule Kitakami.Bot do
             unless chat_data == nil do
               # Only activate if the member is not active.
               member_is_active = Enum.member?(chat_data.active_members, user_id)
-              
+
               response = case member_is_active do
                 false ->
                   new_members = chat_data.active_members ++ [user_id]
                   new_chat_data = %{chat_data | active_members: new_members}
                   store_data(:chats, chat_id, new_chat_data)
-                  
+
                   "Okay, this has been activated for you."
                 true ->
                   "This chat has already been activated for you."
@@ -227,13 +227,13 @@ defmodule Kitakami.Bot do
             unless chat_data == nil do
               # Only deactivate if the member is active
               member_is_active = Enum.member?(chat_data.active_members, user_id)
-              
+
               response = case member_is_active do
                 true ->
                   new_members = chat_data.active_members -- [user_id]
                   new_chat_data = %{chat_data | active_members: new_members}
                   store_data(:chats, chat_id, new_chat_data)
-                  
+
                   "Okay, this has been deactivated for you."
                 false ->
                   "This chat has not been activated for you."
@@ -281,12 +281,12 @@ defmodule Kitakami.Bot do
                 # Skip if the current member sent the message
                 if member_id != user_id do
                   member_data = query_data(:users, member_id)
-        
+
                   # Match each word across the message string
                   matches = for word <- member_data.words do
                     String.match?(message_text, ~r"#{word}")
                   end
-        
+
                   # If any word matched, notify the user
                   if Enum.member?(matches, true) do
                     edit_string = if original_message_text do
@@ -294,7 +294,7 @@ defmodule Kitakami.Bot do
                     end
 
                     notification_string = "From *#{chat_title}*#{edit_string}"
-        
+
                     Nadia.send_message(member_id, notification_string, msg_opts)
                     Nadia.forward_message(member_id, chat_id, message_id)
                   end
@@ -303,5 +303,14 @@ defmodule Kitakami.Bot do
             end
         end
     end
+  end
+
+  def process_updates({:error, error}) do
+    case error do
+      %Nadia.Model.Error{reason: msg} -> Logger.warn "Nadia: #{msg}"
+      error -> Logger.error "Error: #{error}"
+    end
+
+    -1
   end
 end
